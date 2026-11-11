@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나의 팀 연대기 · 교사 전광판</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{font-size:20px}
+  .wrap{max-width:1500px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .tabs button{min-height:52px;padding:8px 18px;border-radius:4px;border:2px solid #ffae3a;background:transparent;color:#ffae3a;font-weight:800;font-family:var(--mono)}
+  .tabs button.on{background:#ffae3a;color:#000}
+  table{width:100%;border-collapse:collapse;font-size:20px}
+  th,td{padding:10px 8px;border-bottom:1px solid #2b1d0b;text-align:left}
+  th{color:#a6702a;font-weight:700;font-size:16px}
+  td.n{font-family:var(--mono);font-weight:900}
+  tr.top1 td{color:#ffd24d}
+  .tbar{display:grid;grid-template-columns:180px 1fr 110px;gap:10px;align-items:center;margin:10px 0}
+  .tbar .bar{height:34px;background:#1b1208;border-radius:3px;overflow:hidden}
+  .tbar .bar i{display:block;height:100%}
+  td .bar{display:inline-block;vertical-align:middle;width:120px;height:12px;background:#2a1d0b;border-radius:6px;overflow:hidden}td .bar i{display:block;height:100%;background:#ffae3a}
+  .pill{display:inline-block;padding:4px 10px;border-radius:99px;background:#2a1d0b;margin:2px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .gallery .label-preview{background:#fffdf6;color:#1a1a1a;border:none;border-left:8px solid var(--c);border-radius:6px}
+  .gallery a{color:#1a1a1a}
+  .hdr{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  select{width:auto;min-width:160px}
+  @media print{body{background:#fff!important;color:#000}.noprint{display:none}}
+</style>
+</head>
+<body class="era-0">
+<main class="wrap" id="t"></main>
+<script src="config.js"></script>
+<script src="data/game-data.js"></script>
+<script src="store.js"></script>
+<script src="teacher.js"></script>
+</body>
+</html>

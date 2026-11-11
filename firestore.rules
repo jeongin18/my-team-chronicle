@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // config.js의 collection 이름과 같아야 합니다.
+    match /chronicle-2026/{sid} {
+      // 교사 전광판이 실시간으로 읽을 수 있도록 읽기는 허용
+      allow read: if true;
+      // 학번 5자리 문서만, 학번·이름이 맞을 때만 쓰기 허용. 삭제는 콘솔에서만.
+      allow create, update: if sid.matches('^[0-9]{5}$')
+        && request.resource.data.sid == sid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 12
+        && request.resource.data.pct is number
+        && request.resource.data.pct <= 110
+        && (resource == null || resource.data.name == request.resource.data.name);
+      allow delete: if false;
+    }
+  }
+}

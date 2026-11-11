@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>나의 팀 연대기 · 프로야구로 읽는 한국 현대사</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="intro">
+<div class="topbar hidden" id="topbar">
+  <div class="inner">
+    <div class="badge" id="tb-badge"></div>
+    <div class="grow">
+      <div class="small" id="tb-title"></div>
+      <div class="prog"><i id="tb-prog" style="width:0"></i></div>
+    </div>
+    <div class="score" id="tb-score">0%</div>
+    <button class="icon-btn nav-btn" id="tb-home" title="홈"><span>🏠</span><small>홈</small></button>
+    <button class="icon-btn nav-btn" id="tb-ch" title="챕터 선택"><span>📚</span><small>챕터</small></button>
+    <button class="icon-btn" id="tb-sound" title="소리 켜기/끄기">🔊</button>
+  </div>
+</div>
+<main class="wrap" id="app"></main>
+<noscript>이 활동은 자바스크립트가 필요합니다.</noscript>
+<script src="config.js"></script>
+<script src="data/game-data.js"></script>
+<script src="data/map-data.js"></script>
+<script src="images/credits.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+<script type="module" src="game3d.js"></script>
+</body>
+</html>
