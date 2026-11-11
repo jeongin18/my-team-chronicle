@@ -12,9 +12,9 @@ function supported() {
 
 // ───────── 난이도 ─────────
 const LEVELS = {
-  easy:   { label: "쉬움",   speed: 1.3, good: .12,  perf: .05,  meter: "full", ballRate: .2,  types: ["직구", "직구", "체인지업"], aim: 1.3, center: .14, contact: .15 },
-  normal: { label: "보통",   speed: 1.0, good: .085, perf: .035, meter: "bar",  ballRate: .35, types: ["직구", "직구", "슬라이더", "체인지업"], aim: 1.9, center: .10, contact: .25 },
-  hard:   { label: "어려움", speed: .82, good: .06,  perf: .025, meter: "none", ballRate: .4,  types: ["직구", "슬라이더", "커브", "체인지업"], aim: 2.6, center: .08, contact: .35 },
+  easy:   { label: "쉬움",   speed: 1.3, good: .12,  perf: .05,  meter: "full", ballRate: .2,  types: ["직구", "직구", "체인지업"], aim: .75, center: .14, contact: .15 },
+  normal: { label: "보통",   speed: 1.0, good: .085, perf: .035, meter: "bar",  ballRate: .35, types: ["직구", "직구", "슬라이더", "체인지업"], aim: 1.0, center: .11, contact: .25 },
+  hard:   { label: "어려움", speed: .82, good: .06,  perf: .025, meter: "none", ballRate: .4,  types: ["직구", "슬라이더", "커브", "체인지업"], aim: 1.35, center: .09, contact: .35 },
 };
 const PITCHES = {
   "직구":     { d: .78, kmh: [140, 153], bx: 0,    by: 0,    rise: .25 },
@@ -196,11 +196,12 @@ function play(container, opts) {
       <div class="g3d-card l" style="--c:${tc}"><small>${pitchMode ? "우리 팀 투수" : "우리 팀 타자"}</small><b>${opts.short || ""}</b><em>${scn.goalText || ""}</em></div>
       <div class="g3d-card r"><small>${pitchMode ? "상대 타자" : "상대 투수"}</small><b>상대 팀</b><em id="g3d-spd">— km/h</em></div>
       <div class="g3d-msg" id="g3d-msg"></div>
-      <div class="g3d-meter ${pitchMode ? "pm" : ""} m-${LV.meter}"><span>${pitchMode ? "조준점이 존 한가운데 올 때 던지기! 존 밖 공은 볼이에요." : "존 안의 공만 치고, 볼은 골라내요!"}</span><div class="bar"><i class="win"></i><i class="win p"></i><i class="cur" id="g3d-cur"></i></div></div>
+      <div class="g3d-meter ${pitchMode ? "pm" : ""} m-${LV.meter}"><span>${pitchMode ? "① 좌우를 멈추고 ② 높이를 멈추면 던져요! 존 밖은 볼이에요." : "존 안의 공만 치고, 볼은 골라내요!"}</span><div class="bar"><i class="win"></i><i class="win p"></i><i class="cur" id="g3d-cur"></i></div></div>
     </div>`;
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const lowEnd = (navigator.hardwareConcurrency || 4) <= 4 || (container.clientWidth || 640) < 600;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowEnd ? 1.25 : 1.5));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = lowEnd ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   container.prepend(renderer.domElement);
   const scene = new THREE.Scene();
@@ -332,10 +333,12 @@ function play(container, opts) {
 
   // 스트라이크 존 · 조준점
   const zoneW = .44, zoneB = .5, zoneT = 1.1;
-  const zone = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[-zoneW / 2, zoneB], [zoneW / 2, zoneB], [zoneW / 2, zoneT], [-zoneW / 2, zoneT], [-zoneW / 2, zoneB]].map(p => new THREE.Vector3(p[0], p[1], .2))), new THREE.LineDashedMaterial({ color: "#ffffff", dashSize: .05, gapSize: .04, transparent: true, opacity: opts.level === "hard" ? .25 : .75 }));
-  zone.computeLineDistances(); scene.add(zone);
+  const zone = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[-zoneW / 2, zoneB], [zoneW / 2, zoneB], [zoneW / 2, zoneT], [-zoneW / 2, zoneT], [-zoneW / 2, zoneB]].map(p => new THREE.Vector3(p[0], p[1], .2))), new THREE.LineDashedMaterial({ color: "#ffffff", dashSize: .05, gapSize: .04, transparent: true, opacity: opts.level === "hard" ? .35 : .85, depthTest: false }));
+  zone.computeLineDistances(); zone.renderOrder = 3; scene.add(zone);
   const reticle = new THREE.Mesh(new THREE.RingGeometry(.045, .065, 28), new THREE.MeshBasicMaterial({ color: "#ffd24d", side: THREE.DoubleSide, transparent: true, opacity: .95, depthTest: false }));
   reticle.position.z = .2; reticle.visible = pitchMode; reticle.renderOrder = 5; scene.add(reticle);
+  const aimLine = new THREE.Mesh(new THREE.PlaneGeometry(.02, 1.3), new THREE.MeshBasicMaterial({ color: "#ffd24d", transparent: true, opacity: .8, depthTest: false }));
+  aimLine.position.z = .2; aimLine.renderOrder = 4; aimLine.visible = false; scene.add(aimLine);
   const mark = new THREE.Mesh(new THREE.CircleGeometry(.04, 20), new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: .0, depthTest: false }));
   mark.position.z = .21; mark.renderOrder = 6; scene.add(mark);
 
@@ -360,13 +363,13 @@ function play(container, opts) {
 
   // 카메라
   const CAM_HOME = pitchMode
-    ? { pos: new THREE.Vector3(2.4, 3.3, MOUND_Z + 14), look: new THREE.Vector3(.05, .8, 0), fov: 8 }
+    ? { pos: new THREE.Vector3(2.4, 3.3, MOUND_Z + 14), look: new THREE.Vector3(.05, .8, 0), fov: (container.clientWidth || 640) < 600 ? 5.6 : 8 }
     : { pos: new THREE.Vector3(.9, 3.3, -6.4), look: new THREE.Vector3(-.15, .2, 14), fov: 40 };
   camera.fov = CAM_HOME.fov; camera.updateProjectionMatrix();
   const camPos = CAM_HOME.pos.clone(), camLook = CAM_HOME.look.clone();
   let camGoalPos = CAM_HOME.pos.clone(), camGoalLook = CAM_HOME.look.clone(), camGoalFov = CAM_HOME.fov;
   camera.position.copy(camPos); camera.lookAt(camLook);
-  function resize() { const w = container.clientWidth || 640, h = Math.round(w * 9 / 16); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  function resize() { const w = container.clientWidth || 640, h = Math.round(w * (w < 600 ? 3 / 4 : 9 / 16)); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
   resize(); window.addEventListener("resize", resize);
 
   // ───────── 타석 진행 ─────────
@@ -430,7 +433,8 @@ function play(container, opts) {
     if (!alive || done) return;
     const now = performance.now();
     if (pitchMode) {
-      if (state !== "aim") return;
+      if (state === "aim") { state = "aimY"; aimT = Math.random() * 6; say("좌우 결정! 이제 높이를 정해요", "good"); return; }
+      if (state !== "aimY") return;
       const x = reticle.position.x, y = reticle.position.y;
       const inZone = Math.abs(x) <= zoneW / 2 && y >= zoneB && y <= zoneT;
       const nearEdge = !inZone && Math.abs(x) <= zoneW / 2 + .12 && y >= zoneB - .12 && y <= zoneT + .12;
@@ -534,11 +538,15 @@ function play(container, opts) {
     const now = performance.now(), dtS = Math.min(clock.getDelta(), .05);
     mixers.forEach(mx => mx.update(dtS));
     posePitcher(now); poseBatter(now);
-    if (pitchMode && state === "aim") {
-      aimT += dtS * LV.aim * (1 + (pitchNo - 1) * .1);
-      const wob = opts.level === "hard" ? Math.sin(aimT * 7.3) * .08 : 0;
-      reticle.position.x = Math.sin(aimT * 2.1) * .42 + wob; reticle.position.y = (zoneB + zoneT) / 2 + Math.cos(aimT * 3.3) * .42 + wob;
-    }
+    if (pitchMode && (state === "aim" || state === "aimY")) {
+      // 두 번 눌러 던지기: ① 좌우로 움직이는 조준선을 멈추고 ② 위아래로 움직이는 조준점을 멈춰요
+      aimT += dtS * LV.aim * (1 + (pitchNo - 1) * .05);
+      const wob = opts.level === "hard" ? Math.sin(aimT * 6.1) * .03 : 0;
+      if (state === "aim") { reticle.position.x = Math.sin(aimT * 2) * .4 + wob; reticle.position.y = (zoneB + zoneT) / 2; aimLine.position.x = reticle.position.x; aimLine.rotation.z = 0; }
+      else { reticle.position.y = (zoneB + zoneT) / 2 + Math.sin(aimT * 2) * .42 + wob; aimLine.position.set(0, reticle.position.y, .2); aimLine.rotation.z = Math.PI / 2; }
+      if (state === "aim") aimLine.position.y = (zoneB + zoneT) / 2;
+      aimLine.visible = true;
+    } else aimLine.visible = false;
     const cur = $("#g3d-cur");
     if (state === "flight") {
       const u = (now - t0) / (dur * 1000);

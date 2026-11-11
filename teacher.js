@@ -62,14 +62,15 @@
 
   function tname(k) { return k && D.teams[k] ? D.teams[k].short : "-"; }
 
+  function sea(r) { const l = (r.season && r.season.log) || []; const w = l.filter(x => x.w).length; return l.length ? `${w}승 ${l.length - w}패` : ""; }
   function rankHTML(list) {
     const sorted = list.slice().sort((a, b) => (b.pct || 0) - (a.pct || 0) || (b.progress || 0) - (a.progress || 0));
     let rank = 0, prev = null;
-    return `<table><thead><tr><th>순위</th><th>반</th><th>번호</th><th>이름</th><th>구단</th><th>진행</th><th>점수</th><th>팬 등급</th><th>최근</th></tr></thead><tbody>
+    return `<table><thead><tr><th>순위</th><th>반</th><th>번호</th><th>이름</th><th>구단</th><th>진행</th><th>점수</th><th>시즌</th><th>팬 등급</th><th>최근</th></tr></thead><tbody>
       ${sorted.map((r, i) => { if (r.pct !== prev) { rank = i + 1; prev = r.pct; } return `<tr class="${rank === 1 ? "top1" : ""}">
         <td class="n">${rank}</td><td>${r.cls || ""}</td><td>${r.num || ""}</td><td>${esc(r.name)}</td>
         <td>${r.team ? `<span style="color:${D.teams[r.team].color === "#000000" ? "#ddd" : D.teams[r.team].color};filter:brightness(1.6)">■</span> ${tname(r.team)}` : "선택 전"}</td>
-        <td>${r.progress || 0}/${r.total || "-"}${r.finished ? " ✓" : ""}</td><td class="n">${(r.pct || 0).toFixed(1)}%</td><td>${esc(r.fan || "")}</td>
+        <td>${r.progress || 0}/${r.total || "-"}${r.finished ? " ✓" : ""}</td><td class="n">${(r.pct || 0).toFixed(1)}%</td><td class="n">${sea(r)}</td><td>${esc(r.fan || "")}</td>
         <td class="small muted">${r.updatedAt ? new Date(r.updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : ""}</td></tr>`; }).join("")}
       </tbody></table>`;
   }

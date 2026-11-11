@@ -587,3 +587,82 @@ body.intro .wrap{max-width:980px}
 .lp-credit{right:16px;bottom:10px}
 @media (max-width:700px){.lp{min-height:420px;padding:22px 20px}.lp-sub{font-size:15px}}
 .g2d-tk{margin:8px 0 0;padding:7px 12px;border-left:3px solid #ffd24d;background:rgba(8,11,22,.85);color:#fff;font-size:14px;font-weight:700;border-radius:6px}
+/* 휴대폰에서 미니게임: 화면 가득, 누르기 쉬운 큰 버튼, 확대·스크롤 방지 */
+.gamebox,.gamebox canvas,.btn.swing{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (max-width:760px){
+  .gamebox{margin:0 -20px;border-radius:0;border-left:0;border-right:0}
+  .btn.swing{position:sticky;bottom:10px;z-index:5;width:100%;min-height:72px;font-size:24px;border-radius:18px;margin-top:10px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  .lvpick button{min-width:0;padding:8px 10px}
+  .lvpick button small{font-size:11px}
+  .g3d-sb{transform:scale(.88);transform-origin:top left}
+  .g3d-msg{font-size:34px}
+  .g3d-meter{width:70%}
+}
+@media (max-width:600px){
+  .gamebox.g3d{aspect-ratio:4/3}
+  .g3d-meter span{font-size:10.5px;text-shadow:0 1px 3px #000}
+  .g3d-ticker{font-size:11px;padding:4px 8px}
+  #tb-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .grow{min-width:0}
+}
+
+/* ───────── 시즌 모드 ───────── */
+.tb-rec{display:block;font-size:10.5px;font-weight:700;opacity:.8;letter-spacing:0;line-height:1.1;text-align:right}
+.season{margin:14px 0;border-radius:var(--radius);overflow:hidden;background:#0d1120;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.se-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--team);font-weight:800}
+.se-h small{font-weight:500;opacity:.85}
+.se-big{display:flex;align-items:baseline;gap:6px;padding:14px 16px 4px;font-variant-numeric:tabular-nums}
+.se-big b{font-size:52px;line-height:1;font-weight:900;color:#ffd24d}
+.se-big i{font-style:normal;font-size:20px;margin-right:10px;opacity:.8}
+.se-pct{margin-left:auto;font-family:var(--mono);font-size:20px;color:#7cfcff}
+.se-dots{display:flex;flex-wrap:wrap;gap:4px;padding:8px 16px}
+.se-dots i{font-style:normal;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:11.5px;font-weight:800}
+.se-dots i.w{background:#2b9a3e}.se-dots i.l{background:#4a5163;color:#c5cad6}
+.se-v{margin:4px 16px 4px;font-weight:700}
+.season .small{padding:0 16px 12px;color:#aab2c5!important}
+
+/* ───────── 응원석 반응 ───────── */
+.cheer-ov{position:fixed;inset:auto 0 18%;z-index:90;display:flex;justify-content:center;align-items:center;gap:18px;pointer-events:none;animation:chin .25s ease-out,chout .4s 2.2s forwards}
+@keyframes chin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+@keyframes chout{to{opacity:0;transform:translateY(-20px)}}
+.cheer-t{background:rgba(10,12,20,.88);color:#fff;border:3px solid var(--c);border-radius:18px;padding:12px 22px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.cheer-t b{display:block;font-size:30px;color:#ffd24d;font-weight:900}
+.cheer-t span{font-size:20px;font-weight:800}
+.stick{width:18px;height:120px;border-radius:10px;background:linear-gradient(var(--c),color-mix(in srgb,var(--c) 60%,#fff));box-shadow:0 0 18px var(--c);animation:bang .24s ease-in-out infinite alternate}
+.stick.l{transform-origin:bottom;rotate:-18deg}.stick.r{transform-origin:bottom;rotate:18deg;animation-delay:.12s}
+@keyframes bang{from{translate:0 0}to{translate:0 -14px}}
+
+/* ───────── 그날의 신문 1면(가상) ───────── */
+.news{margin:0 0 14px;border-radius:6px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:newsin .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes newsin{from{transform:rotate(-6deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.news .nf{font-size:11.5px;padding:6px 12px;opacity:.8;border-top:1px solid rgba(0,0,0,.2)}
+.news p{margin:6px 0}
+/* 1980년대: 누런 종이·세로 제목·명조 */
+.n80{background:#efe6cc;color:#1d1a14;font-family:"Nanum Myeongjo","Noto Serif KR","Batang",serif;border:1px solid #b9ab86}
+.n80 .nm{display:flex;justify-content:space-between;align-items:baseline;padding:8px 12px;border-bottom:4px double #1d1a14}
+.n80 .nm b{font-size:28px;letter-spacing:.3em}
+.n80 .nm span{font-size:12px}
+.n80 .nb{display:flex;gap:14px;padding:10px 12px}
+.n80 .nv{writing-mode:vertical-rl;font-size:30px;line-height:1.15;margin:0;font-weight:900;border-left:1px solid #1d1a14;padding-left:10px;max-height:300px}
+.n80 .ns{font-weight:700;font-size:15px;border-bottom:1px solid #1d1a14;padding-bottom:6px}
+.n80 .nph{height:90px;border:1px solid #1d1a14;display:grid;place-items:center;font-size:12px;color:#6d6550;background:repeating-linear-gradient(45deg,#e4d9bb 0 6px,#efe6cc 6px 12px)}
+/* 1990년대: 스포츠 신문 */
+.n90{background:#fff;color:#111;border-top:10px solid #d6001c}
+.n90 .nm{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#111;color:#fff}
+.n90 .nm b{font-size:24px;font-style:italic;font-weight:900}.n90 .nm b span{color:#ffd400;margin-left:4px}
+.n90 .nm em{font-style:normal;font-size:12px}
+.n90 h3{margin:10px 12px 4px;font-size:30px;line-height:1.15;font-weight:900;color:#d6001c;letter-spacing:-.04em;text-shadow:2px 2px 0 #ffd400}
+.n90 p{padding:0 12px}.n90 .ns{font-weight:800;background:#ffd400;display:inline;padding:2px 6px}
+/* 2020년대: 웹 기사 */
+.n20{background:#fff;color:#14161c;border:1px solid #e3e6ec}
+.n20 .nm{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid #e3e6ec}
+.n20 .nb2{background:#e11d2e;color:#fff;font-size:11px;font-weight:900;padding:2px 7px;border-radius:4px}
+.n20 .nm em{margin-left:auto;font-style:normal;font-size:12px;color:#7a8090}
+.n20 h3{margin:12px 14px 4px;font-size:24px;line-height:1.3;font-weight:900;letter-spacing:-.03em}
+.n20 p{padding:0 14px}.n20 .ns{color:#4b4f5c;font-weight:600}
+@media (max-width:600px){.n80 .nb{flex-direction:column}.n80 .nv{writing-mode:horizontal-tb;border-left:0;padding:0;font-size:24px}.n90 h3{font-size:24px}}
+.n80 .nph{height:auto;display:block;background:none;padding:4px}
+.n80 .nph img{width:100%;height:150px;object-fit:cover;filter:grayscale(1) sepia(.5) contrast(1.2);display:block}
+.n80 .nph small{display:block;text-align:center;font-size:11px;margin-top:2px}
+.nph9 img{width:calc(100% - 24px);margin:6px 12px;height:170px;object-fit:cover;filter:saturate(1.3) contrast(1.05);border:3px solid #111}
+.nph2 img{width:calc(100% - 28px);margin:6px 14px;height:190px;object-fit:cover;border-radius:10px}

@@ -79,13 +79,72 @@
     }
     return { max, pts, done, total: list.length, pct: max ? Math.round(pts / max * 1000) / 10 : 0 };
   }
+  // ───────── 시즌 모드: 점수가 있는 미션 하나 = 한 경기 ─────────
+  const SEASON_KINDS = ["choice", "map", "order", "match", "game"];
+  function seasonOf() { S.season = S.season || { log: [] }; return S.season; }
+  function seasonStat(ids) {
+    const log = seasonOf().log.filter(x => !ids || ids.includes(x.id));
+    let w = 0, l = 0, cur = 0, best = 0;
+    for (const x of log) { if (x.w) { w++; cur++; best = Math.max(best, cur); } else { l++; cur = 0; } }
+    return { w, l, cur, best, log, pct: w + l ? w / (w + l) : 0 };
+  }
+  function recordGame(m, p) {
+    if (!SEASON_KINDS.includes(m.kind)) return null;
+    const win = m.kind === "game" ? p >= GAME_MAX : p >= PTS * .7;
+    const sea = seasonOf(); if (sea.log.find(x => x.id === m.id)) return null;
+    sea.log.push({ id: m.id, w: win ? 1 : 0 });
+    const st = seasonStat();
+    if (win && st.cur >= 3 && st.cur % 1 === 0 && [3, 5, 7, 10].includes(st.cur)) { cheer(true, `${st.cur}연승!`); }
+    else if (win && m.kind !== "game") cheer(false);
+    toast(win ? `⚾ 승리! 시즌 ${st.w}승 ${st.l}패${st.cur >= 2 ? ` · ${st.cur}연승` : ""}` : `패배… 시즌 ${st.w}승 ${st.l}패. 다음 경기에서 만회해요!`);
+    return st;
+  }
+  // ───────── 응원석 반응: 구단별 구호 박수 리듬(응원가 멜로디·가사는 쓰지 않아요) ─────────
+  const CLAPS = [[0, .5, 1.25, 1.5, 1.75], [0, .5, 1, 1.5, 1.75, 2], [0, .25, .5, 1, 1.25, 1.5], [0, .75, 1, 1.5, 2], [0, .5, .75, 1.25, 1.5, 1.75]];
+  function cheerPattern(key) {
+    const order = D.teamOrder || Object.keys(D.teams), i = Math.max(0, order.indexOf(key));
+    const name = D.teams[key].short, syl = Math.min(4, [...name.replace(/\s/g, "")].length) || 2;
+    const tempo = .2 + (i % 4) * .015;               // 구단마다 박자 빠르기를 조금씩 다르게
+    const drums = Array.from({ length: syl * 2 }, (_, k) => k < syl ? k : syl + .5 + (k - syl));
+    return { name, tempo, drums: drums.slice(0, syl), claps: CLAPS[i % CLAPS.length].map(c => c + syl + .5) };
+  }
+  function cheer(big, label) {
+    if (!S || !S.team || document.body.classList.contains("calm")) return;
+    const pt = cheerPattern(S.team), C = team().color;
+    if (big) {
+      const ov = document.createElement("div"); ov.className = "cheer-ov"; ov.style.setProperty("--c", C);
+      ov.innerHTML = `<i class="stick l"></i><div class="cheer-t"><b>${esc(label || "")}</b><span>${esc(pt.name)}! ${"👏".repeat(3)}</span></div><i class="stick r"></i>`;
+      document.body.appendChild(ov); setTimeout(() => ov.remove(), 2600);
+    }
+    if (!sound) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = actx.currentTime + .02, T = pt.tempo * 2;
+      const hit = (t, freq, dur, gain, type) => {
+        const len = Math.floor(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, type === "drum" ? 2 : 6);
+        const src = actx.createBufferSource(); src.buffer = buf;
+        const f = actx.createBiquadFilter(); f.type = type === "drum" ? "lowpass" : "bandpass"; f.frequency.value = freq;
+        const g = actx.createGain(); g.gain.value = gain; src.connect(f); f.connect(g); g.connect(actx.destination); src.start(t);
+      };
+      const reps = big ? 2 : 1;
+      for (let r = 0; r < reps; r++) {
+        const base = t0 + r * (pt.drums.length + 3) * T;
+        if (big) pt.drums.forEach(b => hit(base + b * T, 160, .18, .9, "drum"));
+        (big ? pt.claps : [0, .5, 1]).forEach(b => { for (let k = 0; k < 6; k++) hit(base + b * T + k * .006, 1400 + Math.random() * 600, .07, .35, "clap"); });
+      }
+      // 관중 함성
+      if (big) hit(t0, 900, 2.2, .12, "clap");
+    } catch (e) {}
+  }
+  window.__cheer = cheer;
   function fanLevel(pct) { return pct >= 75 ? "레전드 팬" : pct >= 50 ? "골수 팬" : pct >= 25 ? "직관러" : "신입 팬"; }
   function persist() {
     const t = totals();
     const payload = { sid: S.sid, name: S.name, grade: S.grade, cls: S.cls, num: S.num, team: S.team || null,
       points: t.pts, max: t.max, pct: t.pct, progress: t.done, total: t.total, fan: fanLevel(t.pct),
       pos: S.pos, done: S.done, cards: S.cards, tutorialDone: !!S.tutorialDone, scene: S.scene || null,
-      label: S.label || null, finished: !!S.finished, gm: S.gm || null };
+      label: S.label || null, finished: !!S.finished, gm: S.gm || null, season: S.season || null };
     saving = saving.then(() => Store.save(S.sid, payload)).catch(() => toast("저장이 잠시 늦어지고 있어요. 계속 진행해도 괜찮아요."));
     updateTopbar();
   }
@@ -98,7 +157,8 @@
     const ch = team().chapters[S.pos.ch];
     document.getElementById("tb-title").textContent = `${S.name} · ${ch ? ch.title : "마무리"} · ${fanLevel(t.pct)}`;
     document.getElementById("tb-prog").style.width = (t.done / t.total * 100) + "%";
-    document.getElementById("tb-score").textContent = t.pct + "%";
+    const st = seasonStat();
+    document.getElementById("tb-score").innerHTML = `${t.pct}%<small class="tb-rec">${st.w}승 ${st.l}패</small>`;
   }
   document.getElementById("tb-home").onclick = () => { if (S && S.team) viewHome(); };
   document.getElementById("tb-ch").onclick = () => { if (S && S.team) viewChapters(); };
@@ -365,16 +425,28 @@
       <p style="text-align:center"><button class="btn" id="go">플레이 볼!</button></p></div>`);
     document.getElementById("go").onclick = () => { S["intro" + S.pos.ch] = true; persist(); route(); };
   }
+  function seasonCard(ch) {
+    const c = seasonStat(ch.missions), all = seasonStat();
+    if (!c.w && !c.l) return "";
+    const pct = (c.pct).toFixed(3).replace(/^0/, ""), verdict = c.pct >= .7 ? "우승 후보급 시즌!" : c.pct >= .5 ? "가을야구 진출권 성적이에요." : "아쉬운 시즌… 다음 시대에서 반등해요!";
+    return `<div class="season"><div class="se-h"><span>${esc(team().short)} · ${ch.from}–${ch.to} 시즌 성적표</span><small>이 앱의 규칙: 미션 하나 = 한 경기</small></div>
+      <div class="se-big"><b>${c.w}</b><i>승</i><b>${c.l}</b><i>패</i><span class="se-pct">승률 ${pct}</span></div>
+      <div class="se-dots">${c.log.map(x => `<i class="${x.w ? "w" : "l"}" title="${esc(x.id)}">${x.w ? "승" : "패"}</i>`).join("")}</div>
+      <p class="se-v">${verdict}${c.best >= 3 ? ` 최다 ${c.best}연승을 기록했어요.` : ""}</p>
+      <p class="small muted" style="margin:0">통산 ${all.w}승 ${all.l}패 · 실제 순위가 아니라 이 활동의 기록이에요.</p></div>`;
+  }
   function viewChapterEnd() {
     const ch = team().chapters[S.pos.ch];
     const mine = S.cards.filter(c => ch.missions.includes(c.id));
     const nc = nextChapter(S.pos.ch);
     h(`<div class="panel"><div class="kicker">${S.pos.ch + 1}챕터 종료</div><h1 class="led">「${esc(ch.title)}」 완료</h1>
+      ${seasonCard(ch)}
       <p>이번 챕터에서 모은 연대기 카드 ${mine.length}장</p>
       <div class="cards">${mine.map(cardHTML).join("")}</div>
       <p class="row"><button class="btn" id="go">${nc >= team().chapters.length ? "마지막 정리로" : nc > S.pos.ch ? "다음 시대로" : `남은 ${nc + 1}챕터로`}</button><button class="btn ghost" id="chs">📚 챕터 선택</button></p></div>`);
     document.getElementById("go").onclick = () => goChapter(nc);
     document.getElementById("chs").onclick = viewChapters;
+    if (seasonStat(ch.missions).pct >= .5) setTimeout(() => cheer(true, "시즌 종료!"), 400);
   }
 
   // ───────── 홈 · 챕터 선택 ─────────
@@ -544,6 +616,7 @@
       header: `${S.pos.ch + 1}챕터 · 미션 ${n}/${ch.missions.length}`,
       onScore: (p, extra) => {
         S.done[id] = { p, t: Date.now() };
+        recordGame(m, p);
         if (m.kind !== "scene" && m.kind !== "chronicle" && m.kind !== "gm") {
           const c = cardFor(id, extra);
           if (!S.cards.find(x => x.id === id)) S.cards.push(c);
@@ -560,6 +633,32 @@
     ({ choice: mChoice, map: mMap, order: mOrder, match: mMatch, gm: mGm, game: mGame, museum: mMuseum, scene: mScene, chronicle: mChronicle }[m.kind] || mChoice)(m, ctx, head);
   }
 
+  // ───────── 그날의 신문 1면(학생 플레이 결과로 만든 가상 신문) ─────────
+  function newsHTML(m, r) {
+    const tm = team(), ch0 = team().chapters[S.pos.ch], era = ch0 ? ch0.era : 2, sc = m.scn || {};
+    const head = r.ok
+      ? (r.kind === "hr" ? `${tm.short}, ${sc.inn || ""} 극적인 홈런!` : r.kind === "k" ? `${tm.short} 마운드, 삼진으로 마침표` : r.kind === "out" ? `${tm.short}, 마지막 아웃 잡았다` : r.kind === "walk" ? `${tm.short}, 끈질긴 볼넷으로 기회 살려` : `${tm.short}, ${sc.inn || ""} 결정적 ${r.name}!`)
+      : `${tm.short}, 아쉬운 ${r.name}… 역사와 다른 결말`;
+    const jong = w => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
+    const eul = jong(r.name) ? "을" : "를", ro = jong(r.name) ? "으로" : "로";
+    const sub = m.prompt.split(/[,，]/)[0].replace(/\s+/g, " ") + (sc.inn && !m.prompt.includes(sc.inn) ? ` ${sc.inn}` : "") + ", 운명의 한 타석";
+    const body = `${r.pitches}구까지 이어진 승부, 최종 볼카운트 ${r.balls}-${r.strikes}에서 ${r.name}${r.ok ? eul + " 만들어 냈다. 관중석은 순식간에 함성으로 뒤덮였다." : ro + " 끝났다. 실제 역사에서는 어떻게 됐을까?"}`;
+    const day = `${m.year || ""}년`;
+    if (era === 0) return `<div class="news n80"><div class="nm"><b>연대기 스포츠</b><span>${day} · 제1면</span></div>
+      <div class="nb"><h3 class="nv">${esc(head)}</h3><div><p class="ns">${esc(sub)}</p><p>${esc(body)}</p><div class="nph"><img src="images/stadium/${S.team}.jpg" alt="" onerror="this.parentNode.remove()"><small>오늘의 구장 (자료 사진)</small></div></div></div>
+      <div class="nf">※ 학생 플레이 결과로 만든 가상 신문이에요. 실제 기사는 아래 출처에서 확인해요.</div></div>`;
+    if (era === 1) return `<div class="news n90"><div class="nm"><b>연대기<span>스포츠</span></b><em>${day} · 스포츠 1면</em></div>
+      <h3>${esc(head)}</h3><p class="ns">${esc(sub)}</p><div class="nph9"><img src="images/stadium/${S.team}.jpg" alt="" onerror="this.parentNode.remove()"></div><p>${esc(body)}</p>
+      <div class="nf">※ 학생 플레이 결과로 만든 가상 신문이에요. 실제 기사는 아래 출처에서 확인해요.</div></div>`;
+    return `<div class="news n20"><div class="nm"><span class="nb2">속보</span><b>연대기 스포츠</b><em>${day}</em></div>
+      <h3>${esc(head)}</h3><p class="ns">${esc(sub)}</p><div class="nph2"><img src="images/stadium/${S.team}.jpg" alt="" onerror="this.parentNode.remove()"></div><p>${esc(body)}</p>
+      <div class="nf">※ 학생 플레이 결과로 만든 가상 기사예요. 실제 기사는 아래 출처에서 확인해요.</div></div>`;
+  }
+  function showNews(m, r) {
+    const box = document.getElementById("result"); if (!box || !r) return;
+    box.insertAdjacentHTML("afterbegin", newsHTML(m, r));
+    if (r.ok) cheer(true, r.kind === "hr" ? "홈런!" : "명장면 재현!");
+  }
   function finishBox(m, ctx, ok, msg, extra) {
     const box = document.getElementById("result");
     const card = ctx.tutorial ? "" : (m.kind === "scene" || m.kind === "chronicle") ? "" : `<div class="cards" style="justify-content:center">${cardHTML(cardFor(m.id, extra)).replace('class="card"', 'class="card pop"')}</div><p class="small" style="text-align:center">연대기 카드를 얻었어요! 카드를 누르면 내용을 다시 읽을 수 있어요.</p>`;
@@ -858,16 +957,16 @@
   // ───────── 명장면 재현: 3D 야구장(Three.js). WebGL이 없으면 2D로 ─────────
   function mGame(m, ctx, head) {
     if (!(window.Game3D && window.Game3D.supported())) return mGame2D(m, ctx, head);
-    const pitchMode = /마지막 공|마지막 아웃|리드를 지켜|던지는/.test(m.prompt);
+    const pitchMode = (m.scn && m.scn.goal === "out") || /마지막 공|마지막 아웃|리드를 지켜|던지는/.test(m.prompt);
     const inn = (m.prompt.match(/(\d+)회(초|말)?/) || [])[0] || "";
     const label = (m.prompt.match(/^(\d{4}년[^,.]*?(?:\d+차전|개막전))/) || [])[1] || "";
     const LVD = pitchMode
-      ? { easy: "조준점이 천천히 움직여요", normal: "조준점이 빨라지고, 한가운데 판정이 좁아요", hard: "조준점이 흔들리며 공마다 더 빨라져요" }
+      ? { easy: "조준점이 천천히, 한가운데 판정이 넓어요", normal: "조준점이 조금 빨라요", hard: "조준점이 살짝 흔들리고 공마다 빨라져요" }
       : { easy: "직구만, 타이밍 구간 표시", normal: "변화구·볼이 섞여요. 구간 표시 없음", hard: "더 빠른 공, 커브까지. 게이지 없음" };
     const scn = m.scn || {};
     h(`<div class="panel">${head}<div class="prompt">${esc(m.prompt)}</div>
       ${scn.goalText ? `<div class="g3d-goal">🎯 ${esc(scn.goalText)}</div>` : ""}
-      <p class="small muted">${pitchMode ? "한 타자와 끝까지 승부해요. 노란 조준점이 존 안에 있을 때 '던지기!'를 누르면 스트라이크, 한가운데일수록 헛스윙을 잘 끌어내요. 존 밖이면 볼, 볼 4개면 볼넷이에요." : "한 타석을 끝까지 승부해요(볼 4개 볼넷, 스트라이크 3개 삼진). 존 안의 공은 홈플레이트에 닿는 순간 '스윙!', 존 밖의 공(볼)은 참아야 해요. 타이밍이 정확할수록 안타→2루타→홈런. 화면이나 스페이스바를 눌러도 돼요."} 결과에 따라 보너스 0~3점.</p>
+      <p class="small muted">${pitchMode ? "한 타자와 끝까지 승부해요. 두 번 눌러 던져요: ① 좌우로 움직이는 조준선을 멈추고 ② 위아래로 움직이는 조준점을 멈춰요. 존 한가운데일수록 헛스윙을 잘 끌어내고, 존 밖이면 볼(4개면 볼넷)이에요." : "한 타석을 끝까지 승부해요(볼 4개 볼넷, 스트라이크 3개 삼진). 존 안의 공은 홈플레이트에 닿는 순간 '스윙!', 존 밖의 공(볼)은 참아야 해요. 타이밍이 정확할수록 안타→2루타→홈런. 화면이나 스페이스바를 눌러도 돼요."} 결과에 따라 보너스 0~3점.</p>
       <div class="lvpick" id="lv">${["easy", "normal", "hard"].map(k => `<button data-k="${k}" class="${(S.level || "normal") === k ? "on" : ""}">${window.Game3D.LEVELS[k].label}<small>${LVD[k]}</small></button>`).join("")}</div>
       <div class="gamebox" id="g3"></div>
       <button class="btn swing" id="sw">▶ 이 난이도로 시작</button><div id="result"></div></div>`);
@@ -885,10 +984,12 @@
         if (ended) return; ended = true; sw.disabled = true; document.removeEventListener("keydown", key);
         if (!ctx.tutorial && ctx.onScore) ctx.onScore(r.pts);
         const line = `${r.ok ? "🎉 명장면 재현 성공!" : "아쉬워요. 역사와는 다른 결과가 나왔어요."} 결과: <b>${r.name}</b> (투구 ${r.pitches}개, 최종 카운트 ${r.balls}-${r.strikes}) · 보너스 +${r.pts}점`;
-        setTimeout(() => finishBox(m, ctx, r.ok, line), 900);
+        setTimeout(() => { finishBox(m, ctx, r.ok, line); showNews(m, r); }, 900);
       }
     });
-    sw.onclick = g.act; box.onclick = g.act;
+    const tap = e => { if (e.pointerType !== "mouse") e.preventDefault(); g.act(); };
+    sw.onclick = null; sw.onpointerdown = tap; box.onpointerdown = tap;
+    if (window.innerWidth < 760) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
     };
     sw.onclick = start;
     const key = e => { if (e.code === "Space" && document.getElementById("g3")) { e.preventDefault(); g ? g.act() : start(); } };
@@ -897,14 +998,14 @@
 
   // ───────── 명장면 재현: 2D 야구장 (WebGL이 없을 때) ─────────
   function mGame2D(m, ctx, head) {
-    const pitchMode = /마지막 공|마지막 아웃|리드를 지켜|던지는/.test(m.prompt);
+    const pitchMode = (m.scn && m.scn.goal === "out") || /마지막 공|마지막 아웃|리드를 지켜|던지는/.test(m.prompt);
     const inn = (m.prompt.match(/(\d+)회(초|말)?/) || [])[0] || "";
     const scn = Object.assign({ inn }, m.scn || {});
-    const L2 = { easy: { label: "쉬움", speed: 1.25, good: .12, perf: .05, ballRate: .2, contact: .15, aim: .022 }, normal: { label: "보통", speed: 1, good: .085, perf: .035, ballRate: .35, contact: .25, aim: .03 }, hard: { label: "어려움", speed: .85, good: .06, perf: .025, ballRate: .4, contact: .35, aim: .04 } };
+    const L2 = { easy: { label: "쉬움", speed: 1.25, good: .12, perf: .05, ballRate: .2, contact: .15, aim: .012 }, normal: { label: "보통", speed: 1, good: .085, perf: .035, ballRate: .35, contact: .25, aim: .016 }, hard: { label: "어려움", speed: .85, good: .06, perf: .025, ballRate: .4, contact: .35, aim: .022 } };
     let LV = L2[S.level || "normal"] || L2.normal;
     h(`<div class="panel">${head}<div class="prompt">${esc(m.prompt)}</div>
       ${scn.goalText ? `<div class="g3d-goal">🎯 ${esc(scn.goalText)}</div>` : ""}
-      <p class="small muted">${pitchMode ? "한 타자와 끝까지 승부해요. 노란 조준점이 존 안에 있을 때 '던지기!'를 누르면 스트라이크, 한가운데일수록 헛스윙을 잘 끌어내요. 존 밖이면 볼, 볼 4개면 볼넷이에요." : "한 타석을 끝까지 승부해요(볼 4개 볼넷, 스트라이크 3개 삼진). 존 안의 공은 홈플레이트에 닿는 순간 '스윙!', 존 밖의 공(볼)은 참아야 해요. 타이밍이 정확할수록 안타→2루타→홈런."} 결과에 따라 보너스 0~3점.</p>
+      <p class="small muted">${pitchMode ? "한 타자와 끝까지 승부해요. 두 번 눌러 던져요: ① 좌우로 움직이는 조준선을 멈추고 ② 위아래로 움직이는 조준점을 멈춰요. 존 한가운데일수록 헛스윙을 잘 끌어내고, 존 밖이면 볼(4개면 볼넷)이에요." : "한 타석을 끝까지 승부해요(볼 4개 볼넷, 스트라이크 3개 삼진). 존 안의 공은 홈플레이트에 닿는 순간 '스윙!', 존 밖의 공(볼)은 참아야 해요. 타이밍이 정확할수록 안타→2루타→홈런."} 결과에 따라 보너스 0~3점.</p>
       <div class="lvpick" id="lv">${["easy", "normal", "hard"].map(k => `<button data-k="${k}" class="${(S.level || "normal") === k ? "on" : ""}">${L2[k].label}</button>`).join("")}</div>
       <div class="gamebox"><canvas id="cv" width="760" height="440"></canvas></div>
       <div class="g2d-tk" id="tk2">🎙️ ${esc(scn.inn || "")} 명장면 재현을 시작합니다!</div>
@@ -984,12 +1085,16 @@
     }
     function zone(now) {
       g.strokeStyle = "rgba(255,255,255,.55)"; g.setLineDash([6, 5]); g.lineWidth = 2; g.strokeRect(PZ.x - 34, PZ.y - 38, 68, 64); g.setLineDash([]);
-      if (pitchMode && state === "aim") {
-        const ax = PZ.x + Math.sin(aimT * 2.1) * 70, ay = PZ.y - 6 + Math.cos(aimT * 3.3) * 52;
+      if (pitchMode && (state === "aim" || state === "aimY")) {
+        const [ax, ay] = aimXY();
+        g.strokeStyle = "rgba(255,210,77,.55)"; g.lineWidth = 2; g.beginPath();
+        if (state === "aim") { g.moveTo(ax, PZ.y - 80); g.lineTo(ax, PZ.y + 60); } else { g.moveTo(PZ.x - 90, ay); g.lineTo(PZ.x + 90, ay); } g.stroke();
         g.strokeStyle = "#ffd24d"; g.lineWidth = 3; g.beginPath(); g.arc(ax, ay, 12, 0, 7); g.moveTo(ax - 18, ay); g.lineTo(ax + 18, ay); g.moveTo(ax, ay - 18); g.lineTo(ax, ay + 18); g.stroke();
       }
     }
     const ZW = 34, ZT = PZ.y - 38, ZB = PZ.y + 26;
+    let lockX = PZ.x;
+    function aimXY() { return state === "aim" ? [PZ.x + Math.sin(aimT * 2) * 66, PZ.y - 6] : [lockX, PZ.y - 6 + Math.sin(aimT * 2) * 54]; }
     let balls = 0, isBall = false, pitchNo = 0, done = false, typeName = "직구";
     function ballAt(p) {
       const e = p * p * .35 + p * .65, T = aimAt || PZ;
@@ -1018,7 +1123,7 @@
           g.strokeStyle = "#d33"; g.lineWidth = 1; g.beginPath(); g.arc(b.x - b.r * .3, b.y, b.r * .7, -1, 1); g.stroke();
         }
       }
-      if (state === "aim") aimT += LV.aim * (1 + (pitchNo - 1) * .1);
+      if (state === "aim" || state === "aimY") aimT += LV.aim * (1 + (pitchNo - 1) * .05);
       if (flight) {
         const p = (now - flight.t) / 1400;
         if (p < 1) {
@@ -1059,8 +1164,9 @@
       if (done) return;
       const now = performance.now();
       if (pitchMode) {
-        if (state !== "aim") return;
-        const ax = PZ.x + Math.sin(aimT * 2.1) * 70, ay = PZ.y - 6 + Math.cos(aimT * 3.3) * 52;
+        if (state === "aim") { lockX = aimXY()[0]; state = "aimY"; aimT = Math.random() * 6; say("좌우 결정! 이제 높이"); return; }
+        if (state !== "aimY") return;
+        const [ax, ay] = aimXY();
         const inZone = Math.abs(ax - PZ.x) <= ZW && ay >= ZT && ay <= ZB;
         const near = !inZone && Math.abs(ax - PZ.x) <= ZW + 14 && ay >= ZT - 14 && ay <= ZB + 14;
         const center = Math.hypot(ax - PZ.x, ay - (PZ.y - 6)) < 22;
@@ -1107,7 +1213,8 @@
       sw.textContent = pitchMode ? "⚾ 던지기!" : "🏏 스윙!";
       raf = requestAnimationFrame(frame); setTimeout(nextPitch, 700);
     }
-    sw.onclick = act; cv.onclick = act;
+    const tap = e => { if (e.pointerType !== "mouse") e.preventDefault(); const wasStarted = started; act(); if (!wasStarted && window.innerWidth < 760) setTimeout(() => cv.scrollIntoView({ behavior: "smooth", block: "center" }), 100); };
+    sw.onpointerdown = tap; cv.onpointerdown = tap;
     const key = e => { if (e.code === "Space" && document.getElementById("cv")) { e.preventDefault(); act(); } };
     document.addEventListener("keydown", key);
     function endAB(kind) {
@@ -1122,7 +1229,7 @@
       sw.disabled = true; document.removeEventListener("keydown", key);
       setTimeout(() => cancelAnimationFrame(raf), 1600);
       if (!ctx.tutorial && ctx.onScore) ctx.onScore(pts);
-      setTimeout(() => finishBox(m, ctx, ok, `${ok ? "🎉 명장면 재현 성공!" : "아쉬워요. 역사와는 다른 결과가 나왔어요."} 결과: <b>${names[kind]}</b> (투구 ${pitchNo}개, 최종 카운트 ${balls}-${strikes}) · 보너스 +${pts}점`), 900);
+      setTimeout(() => { finishBox(m, ctx, ok, `${ok ? "🎉 명장면 재현 성공!" : "아쉬워요. 역사와는 다른 결과가 나왔어요."} 결과: <b>${names[kind]}</b> (투구 ${pitchNo}개, 최종 카운트 ${balls}-${strikes}) · 보너스 +${pts}점`); showNews(m, { ok, kind, name: names[kind], balls, strikes, pitches: pitchNo }); }, 900);
     }
     bg(performance.now()); zone(0); pitcher(0); batter(0);
   }
